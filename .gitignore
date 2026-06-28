@@ -1,0 +1,42 @@
+# Virtual Environment
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Data & Model Files (large — regenerate locally)
+books.csv
+users.csv
+ratings.csv
+BX-CSV-Dump.zip
+bx_extracted/
+
+# IDE
+.vscode/
+.idea/
+*.suo
+*.user
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Compiled executables
+*.exe
+*.o
+
+# Temp files
+tempCodeRunnerFile.*
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# Logs
+*.log

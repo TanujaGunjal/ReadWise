@@ -1,0 +1,331 @@
+# 📚 ReadWise — Intelligent Book Recommendation System
+
+> *Multi-model book recommendation system implementing Collaborative Filtering, TF-IDF Content-Based Filtering, K-Means Clustering, and a weighted Hybrid Recommender — exposed via a Flask REST API with an interactive analytics dashboard.*
+
+![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=flat&logo=python&logoColor=white)
+![Flask](https://img.shields.io/badge/Flask-3.1-000000?style=flat&logo=flask&logoColor=white)
+![scikit-learn](https://img.shields.io/badge/scikit--learn-1.9-F7931E?style=flat&logo=scikit-learn&logoColor=white)
+![pandas](https://img.shields.io/badge/pandas-2.x-150458?style=flat&logo=pandas&logoColor=white)
+
+---
+
+## 🌟 Features
+
+| Feature | Description |
+|---|---|
+| 🤝 **Collaborative Filtering** | Cosine similarity on a User × Book pivot matrix |
+| 📝 **Content-Based Filtering** | TF-IDF (10K vocab, bigrams) on title + author + publisher |
+| 🔀 **Hybrid Recommender** | Weighted fusion: `0.5·CF + 0.3·CB + 0.2·Popularity` |
+| 🗂️ **K-Means Clustering** | 4-cluster book segmentation (Popular Favorites, Hidden Gems, etc.) |
+| 🌐 **REST API** | 7 JSON endpoints for all recommendation models |
+| 📊 **Analytics Dashboard** | Real-time KPIs, Chart.js visualisations, top-author table |
+| 🔍 **Live Autocomplete** | Instant title suggestions as you type |
+
+---
+
+## 🏗️ Architecture
+
+```
+                    ┌─────────────────────────────────────────┐
+                    │           ReadWise ML Stack              │
+                    └─────────────────────────────────────────┘
+                                     │
+          ┌──────────────────────────┼─────────────────────────┐
+          │                          │                          │
+┌─────────▼──────────┐  ┌───────────▼───────────┐  ┌──────────▼──────────┐
+│ Collaborative       │  │  Content-Based         │  │  K-Means            │
+│ Filtering           │  │  Filtering             │  │  Clustering         │
+│                     │  │                        │  │                     │
+│ User-Book Pivot     │  │  TF-IDF Vectorizer     │  │  StandardScaler     │
+│ → Cosine Similarity │  │  → Cosine Similarity   │  │  → KMeans (k=4)     │
+└──────────┬──────────┘  └───────────┬────────────┘  └──────────┬──────────┘
+           │                         │                           │
+           └─────────────────────────┼───────────────────────────┘
+                                     │
+                          ┌──────────▼──────────┐
+                          │  Hybrid Recommender  │
+                          │  0.5·CF + 0.3·CB     │
+                          │  + 0.2·Popularity    │
+                          └──────────────────────┘
+```
+
+---
+
+## 🚀 Quick Start
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/yourusername/book-recommender.git
+cd "book-recommender"
+```
+
+### 2. Create a Virtual Environment
+
+```bash
+python -m venv .venv
+
+# Windows
+.venv\Scripts\activate
+
+# macOS / Linux
+source .venv/bin/activate
+```
+
+### 3. Install Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Prepare the Dataset
+
+The app needs three CSV files from the **Book-Crossing dataset**:
+
+| File | Source |
+|---|---|
+| `books.csv` | [Kaggle — Book-Crossing Dataset](https://www.kaggle.com/datasets/ruchi798/bookcrossing-dataset) |
+| `ratings.csv` | Same Kaggle page |
+| `users.csv` | Same Kaggle page |
+
+Place all three files in the project root directory.
+
+> **Don't have the dataset?** Run the included generator to create a realistic synthetic dataset:
+> ```bash
+> python generate_dataset.py
+> ```
+
+### 5. Run the Notebook Pipeline
+
+Open and run `book-recommender-system.ipynb` to generate the model pickle files:
+
+```bash
+jupyter notebook book-recommender-system.ipynb
+```
+
+This produces: `popular.pkl`, `pt.pkl`, `books.pkl`, `similarity_scores.pkl`
+
+### 6. (Optional) Train Advanced ML Models
+
+```bash
+python train_models.py
+```
+
+This trains the K-Means clusterer, TF-IDF content-based model, and hybrid recommender (~30–60 seconds).
+
+### 7. Start the Server
+
+```bash
+python app.py
+```
+
+Open your browser at **[http://127.0.0.1:5000](http://127.0.0.1:5000)**
+
+---
+
+## 📁 Project Structure
+
+```
+Book Recommender/
+├── app.py                      ← Flask app (7 routes + REST API)
+├── train_models.py             ← ML training pipeline
+├── book-recommender-system.ipynb ← Data pipeline & EDA notebook
+├── ml_analysis.ipynb           ← Advanced analysis notebook
+├── requirements.txt            ← Python dependencies
+│
+├── model/                      ← ML model classes
+│   ├── clustering.py           ← BookClusterer (K-Means)
+│   ├── content_based.py        ← ContentBasedRecommender (TF-IDF)
+│   └── hybrid.py               ← HybridRecommender (CF + CB + Popularity)
+│
+├── model_artifacts/            ← Generated by train_models.py
+│   ├── book_clusterer.pkl
+│   ├── content_based.pkl
+│   ├── hybrid_recommender.pkl
+│   └── cluster_summary.csv
+│
+├── Templates/                  ← Jinja2 HTML templates
+│   ├── index.html              ← Home page
+│   ├── recommend.html          ← Recommendation UI
+│   └── dashboard.html          ← Analytics dashboard
+│
+├── static/                     ← CSS, JS, images
+│
+├── popular.pkl                 ← Top-50 popularity DataFrame
+├── pt.pkl                      ← User × Book pivot table
+├── books.pkl                   ← Book metadata
+└── similarity_scores.pkl       ← Pre-computed CF cosine similarity
+```
+
+---
+
+## 🌐 API Reference
+
+All endpoints return JSON.
+
+### Collaborative Filtering
+
+```http
+GET /api/recommend?title=1984&n=4
+```
+
+```json
+{
+  "query": "1984",
+  "method": "Collaborative Filtering (Cosine Similarity)",
+  "count": 4,
+  "recommendations": [
+    { "title": "Animal Farm", "author": "George Orwell", "similarity": 0.4178 },
+    { "title": "Brave New World", "author": "Aldous Huxley", "similarity": 0.2651 }
+  ]
+}
+```
+
+### Content-Based Filtering
+
+```http
+GET /api/recommend/content?title=Dune&n=4&diverse=true
+```
+
+### Hybrid Recommender
+
+```http
+GET /api/recommend/hybrid?title=The+Alchemist&n=4
+```
+
+### Side-by-Side Comparison
+
+```http
+GET /api/compare?title=Harry+Potter+and+the+Sorcerer%27s+Stone&n=4
+```
+
+### All Endpoints
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/` | Home — Top 50 popular books |
+| GET | `/recommend` | Recommendation search UI |
+| POST | `/recommend_books` | Submit CF recommendation form |
+| GET | `/autocomplete?q=<query>` | Live search suggestions (JSON) |
+| GET | `/dashboard` | Analytics dashboard |
+| GET | `/api/recommend` | CF recommendations (JSON) |
+| GET | `/api/recommend/content` | Content-based recommendations (JSON) |
+| GET | `/api/recommend/hybrid` | Hybrid recommendations (JSON) |
+| GET | `/api/compare` | Side-by-side model comparison (JSON) |
+| GET | `/api/clusters` | K-Means cluster summary (JSON) |
+| GET | `/api/book/cluster` | Cluster for a specific book (JSON) |
+
+---
+
+## 🧠 ML Models
+
+### Model 1: Collaborative Filtering
+
+- **Algorithm:** User-Item CF via cosine similarity
+- **Data:** Ratings pivot table (User-ID × Book-Title)
+- **Filtering:** Active users (≥200 ratings), popular books (≥200 votes)
+- **Latency:** O(1) at query time — similarity matrix pre-computed at training time
+
+### Model 2: Content-Based Filtering (TF-IDF)
+
+| Parameter | Value | Rationale |
+|---|---|---|
+| `max_features` | 10,000 | Caps vocabulary size |
+| `ngram_range` | (1, 2) | Captures "Harry Potter" as a unit |
+| `stop_words` | `'english'` | Removes "the", "of", etc. |
+| `sublinear_tf` | `True` | Uses log(1+tf) to dampen frequency |
+
+### Model 3: K-Means Clustering
+
+Books segmented into **4 interpretable clusters** using `avg_rating` and `num_ratings`:
+
+| Cluster | Meaning |
+|---|---|
+| 🌟 **Popular Favorites** | High rating + High votes — safe recommendations |
+| 💎 **Hidden Gems** | High rating + Low votes — underexposed quality books |
+| 📖 **Niche Classics** | Low rating + High votes — have audience, less satisfying |
+| 📦 **Low Engagement** | Low rating + Low votes — deprioritised |
+
+### Model 4: Hybrid Recommender
+
+```
+hybrid_score = 0.5 × CF_score
+             + 0.3 × CB_score
+             + 0.2 × popularity_score
+```
+
+Popularity score itself is: `0.7 × (votes/max_votes) + 0.3 × (rating/max_rating)`
+
+---
+
+## 📊 Analytics Dashboard
+
+The `/dashboard` page provides:
+
+- **KPI Cards** — Total books, average rating, total ratings, top author
+- **Top 10 by Votes** — Horizontal bar chart (Chart.js)
+- **Top 10 by Rating** — Bar chart (filtered to ≥50 ratings)
+- **Rating Distribution** — Histogram (0–10 in 0.5 bins)
+- **Ratings vs Score Scatter** — Popularity vs quality bubble chart
+- **Top Authors Table** — Ranked by total community votes
+
+---
+
+## 🛠️ Tech Stack
+
+| Technology | Role |
+|---|---|
+| **Python 3.10+** | Core language |
+| **Flask 3.1** | Web framework & REST API |
+| **scikit-learn** | KMeans, TfidfVectorizer, cosine_similarity, StandardScaler |
+| **pandas** | Data manipulation, pivot tables, aggregations |
+| **NumPy** | Matrix operations, similarity scoring |
+| **pickle** | Model serialisation / deserialisation |
+| **Chart.js** | Frontend dashboard visualisations |
+| **Jinja2** | Server-side HTML templating |
+
+---
+
+## 📋 Requirements
+
+```
+flask
+numpy
+pandas
+scikit-learn
+gunicorn
+```
+
+Install with:
+
+```bash
+pip install -r requirements.txt
+```
+
+---
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/new-model`)
+3. Commit your changes (`git commit -m 'Add new recommender model'`)
+4. Push to the branch (`git push origin feature/new-model`)
+5. Open a Pull Request
+
+---
+
+## 📄 License
+
+This project is open source and available under the [MIT License](LICENSE).
+
+---
+
+## 🙏 Acknowledgements
+
+- **Book-Crossing Dataset** — Cai-Nicolas Ziegler et al. (2005) — *Improving Recommendation Lists Through Topic Diversification*, WWW '05
+- **scikit-learn** — Machine learning library for Python
+- **Chart.js** — Simple yet flexible JavaScript charting library
+
+---
+
+*Built as a portfolio project demonstrating end-to-end ML system design: data pipeline → model training → REST API → interactive web UI.*

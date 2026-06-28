@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Discover your next favourite book. AI-powered book recommendations based on collaborative filtering and real reader data.">
+  <title>ReadWise — Intelligent Book Discovery</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+  <!-- ── Navbar ──────────────────────────────────────── -->
+  <nav class="navbar" role="navigation" aria-label="Main navigation">
+    <a class="navbar-brand" href="/" id="nav-brand">Book<span>Lens</span></a>
+    <ul class="nav-links">
+      <li><a href="/" class="active" id="nav-home">🏠 Home</a></li>
+      <li><a href="/recommend" id="nav-recommend">🔍 Recommend</a></li>
+      <li><a href="/dashboard" id="nav-dashboard">📊 Dashboard</a></li>
+    </ul>
+  </nav>
+
+  <!-- ── Hero ────────────────────────────────────────── -->
+  <section class="hero" aria-labelledby="hero-heading">
+    <div class="hero-badge">✨ Powered by Collaborative Filtering</div>
+    <h1 id="hero-heading">
+      Discover Books<br>
+      You'll <span class="gradient-text">Actually Love</span>
+    </h1>
+    <p>Explore our curated list of top-rated books or get personalised recommendations based on what readers like you enjoyed.</p>
+
+    <div class="search-container" id="hero-search">
+      <form action="/recommend_books" method="post" id="hero-search-form" autocomplete="off">
+        <div class="search-wrapper">
+          <span class="search-icon">🔍</span>
+          <input
+            type="text"
+            name="user_input"
+            id="hero-search-input"
+            class="search-input"
+            placeholder="Search a book title for recommendations…"
+            aria-label="Search for a book"
+          >
+          <button type="submit" class="search-btn" id="hero-search-btn">Get Picks →</button>
+        </div>
+        <div class="autocomplete-dropdown" id="hero-autocomplete" role="listbox" aria-label="Autocomplete suggestions"></div>
+      </form>
+    </div>
+  </section>
+
+  <!-- ── Top 50 Books ─────────────────────────────────── -->
+  <main class="section" id="top-books-section">
+    <div class="section-header">
+      <h2 class="section-title">
+        Top Rated Books
+        <span>by community votes</span>
+      </h2>
+      <span class="section-badge">📚 {{ book_name | length }} Books</span>
+    </div>
+
+    <div class="books-grid" id="books-grid" role="list">
+      {% for i in range(book_name | length) %}
+      <article class="book-card" role="listitem" id="book-card-{{ i }}" aria-label="{{ book_name[i] }}">
+        <div class="book-cover-wrap">
+          <img
+            class="book-cover"
+            src="{{ image[i] }}"
+            alt="Cover of {{ book_name[i] }}"
+            loading="lazy"
+            onerror="this.src='https://via.placeholder.com/180x270/1e1b4b/a78bfa?text=📖'"
+          >
+          <div class="book-rank">#{{ i + 1 }}</div>
+          <div class="book-overlay">
+            <span class="book-overlay-text">Click to explore</span>
+          </div>
+        </div>
+        <div class="book-body">
+          <div class="book-title">{{ book_name[i] }}</div>
+          <div class="book-author">{{ author[i] }}</div>
+          <div class="book-meta">
+            <span class="stars">
+              {% set full = (rating[i] | float) | int %}
+              {% for s in range(full) %}★{% endfor %}{% for s in range(5 - full) %}☆{% endfor %}
+            </span>
+            <span class="rating-badge">{{ "%.1f" | format(rating[i] | float) }}</span>
+          </div>
+          <div class="votes-text" style="margin-top:0.4rem">{{ votes[i] | int }} ratings</div>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+  </main>
+
+  <!-- ── Footer ───────────────────────────────────────── -->
+  <footer class="footer" role="contentinfo">
+    <p>Built with Python · Flask · scikit-learn · Collaborative Filtering &nbsp;|&nbsp;
+       <a href="/dashboard">View Analytics Dashboard →</a>
+    </p>
+  </footer>
+
+  <!-- ── Loading Overlay ──────────────────────────────── -->
+  <div class="loading-overlay" id="loading-overlay" role="status" aria-live="polite">
+    <div class="spinner"></div>
+    <span class="loading-text">Finding your next read…</span>
+  </div>
+
+  <script>
+    // ── Autocomplete ──────────────────────────────────
+    const heroInput = document.getElementById('hero-search-input');
+    const heroDropdown = document.getElementById('hero-autocomplete');
+    const heroForm = document.getElementById('hero-search-form');
+    const loadingOverlay = document.getElementById('loading-overlay');
+    let acIndex = -1;
+    let acItems = [];
+
+    heroInput.addEventListener('input', async () => {
+      const q = heroInput.value.trim();
+      heroDropdown.innerHTML = '';
+      acIndex = -1;
+
+      if (q.length < 2) { heroDropdown.classList.remove('visible'); return; }
+
+      try {
+        const res = await fetch(`/autocomplete?q=${encodeURIComponent(q)}`);
+        const suggestions = await res.json();
+        acItems = suggestions;
+
+        if (!suggestions.length) { heroDropdown.classList.remove('visible'); return; }
+
+        suggestions.forEach((title, idx) => {
+          const item = document.createElement('div');
+          item.className = 'autocomplete-item';
+          item.setAttribute('role', 'option');
+          item.id = `ac-item-${idx}`;
+          const highlighted = title.replace(
+            new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi'),
+            '<strong>$1</strong>'
+          );
+          item.innerHTML = `📖 ${highlighted}`;
+          item.addEventListener('click', () => {
+            heroInput.value = title;
+            heroDropdown.classList.remove('visible');
+          });
+          heroDropdown.appendChild(item);
+        });
+
+        heroDropdown.classList.add('visible');
+      } catch(e) { heroDropdown.classList.remove('visible'); }
+    });
+
+    heroInput.addEventListener('keydown', (e) => {
+      const items = heroDropdown.querySelectorAll('.autocomplete-item');
+      if (!items.length) return;
+      if (e.key === 'ArrowDown') {
+        acIndex = Math.min(acIndex + 1, items.length - 1);
+      } else if (e.key === 'ArrowUp') {
+        acIndex = Math.max(acIndex - 1, -1);
+      } else if (e.key === 'Escape') {
+        heroDropdown.classList.remove('visible'); return;
+      } else if (e.key === 'Enter' && acIndex >= 0) {
+        e.preventDefault();
+        heroInput.value = acItems[acIndex];
+        heroDropdown.classList.remove('visible');
+        return;
+      }
+      items.forEach((el, i) => el.classList.toggle('selected', i === acIndex));
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('#hero-search')) heroDropdown.classList.remove('visible');
+    });
+
+    // Show loading on form submit
+    heroForm.addEventListener('submit', () => {
+      loadingOverlay.classList.add('show');
+    });
+
+    // Animate KPI numbers (used on dashboard, safe to include globally)
+    document.querySelectorAll('[data-count]').forEach(el => {
+      const target = parseFloat(el.dataset.count);
+      const isFloat = String(target).includes('.');
+      let start = 0;
+      const duration = 1200;
+      const step = (timestamp) => {
+        if (!start) start = timestamp;
+        const progress = Math.min((timestamp - start) / duration, 1);
+        const val = progress * target;
+        el.textContent = isFloat ? val.toFixed(1) : Math.floor(val).toLocaleString();
+        if (progress < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    });
+  </script>
+</body>
+</html>

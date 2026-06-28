@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Analytics dashboard showing book rating distributions, genre insights, and key metrics from the ReadWise dataset.">
+  <title>Analytics Dashboard — ReadWise</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+  <!-- ── Navbar ──────────────────────────────────────── -->
+  <nav class="navbar" role="navigation" aria-label="Main navigation">
+    <a class="navbar-brand" href="/" id="nav-brand">Book<span>Lens</span></a>
+    <ul class="nav-links">
+      <li><a href="/" id="nav-home">🏠 Home</a></li>
+      <li><a href="/recommend" id="nav-recommend">🔍 Recommend</a></li>
+      <li><a href="/dashboard" class="active" id="nav-dashboard">📊 Dashboard</a></li>
+    </ul>
+  </nav>
+
+  <!-- ── Hero ────────────────────────────────────────── -->
+  <section class="hero" style="padding-bottom:1.5rem" aria-labelledby="dash-heading">
+    <div class="hero-badge">📊 Live Analytics</div>
+    <h1 id="dash-heading" style="font-size:clamp(2rem,4vw,3rem)">
+      Data <span class="gradient-text">Insights</span> Dashboard
+    </h1>
+    <p>Explore patterns in the book rating dataset — distributions, top authors, and rating trends.</p>
+  </section>
+
+  <main class="section" id="dashboard-main">
+
+    <!-- ── KPI Cards ──────────────────────────────────── -->
+    <div class="kpi-grid" id="kpi-grid" role="list">
+      <div class="kpi-card" id="kpi-total-books" role="listitem">
+        <div class="kpi-icon violet">📚</div>
+        <div>
+          <div class="kpi-value" data-count="{{ stats.total_books }}">{{ stats.total_books }}</div>
+          <div class="kpi-label">Books Indexed</div>
+        </div>
+      </div>
+      <div class="kpi-card" id="kpi-avg-rating" role="listitem">
+        <div class="kpi-icon amber">⭐</div>
+        <div>
+          <div class="kpi-value" data-count="{{ stats.avg_rating }}">{{ stats.avg_rating }}</div>
+          <div class="kpi-label">Average Rating</div>
+        </div>
+      </div>
+      <div class="kpi-card" id="kpi-total-ratings" role="listitem">
+        <div class="kpi-icon cyan">🗳️</div>
+        <div>
+          <div class="kpi-value" data-count="{{ stats.total_ratings }}">{{ stats.total_ratings }}</div>
+          <div class="kpi-label">Total Ratings</div>
+        </div>
+      </div>
+      <div class="kpi-card" id="kpi-top-author" role="listitem">
+        <div class="kpi-icon emerald">✍️</div>
+        <div>
+          <div class="kpi-value" style="font-size:1rem;line-height:1.3">{{ stats.top_author }}</div>
+          <div class="kpi-label">Most Rated Author</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Charts Row ─────────────────────────────────── -->
+    <div class="charts-grid" id="charts-grid">
+
+      <!-- Bar chart: Top 10 books by votes -->
+      <div class="chart-card" id="chart-top-votes">
+        <div class="chart-card-title">🏆 Top 10 Most Voted Books</div>
+        <div class="chart-card-sub">Books with the highest number of community ratings</div>
+        <div class="chart-wrap">
+          <canvas id="topVotesChart" height="260" aria-label="Top 10 most voted books bar chart" role="img"></canvas>
+        </div>
+      </div>
+
+      <!-- Bar chart: Top 10 books by average rating -->
+      <div class="chart-card" id="chart-top-rated">
+        <div class="chart-card-title">⭐ Top 10 Highest Rated Books</div>
+        <div class="chart-card-sub">Books with the best average rating (min 50 votes)</div>
+        <div class="chart-wrap">
+          <canvas id="topRatedChart" height="260" aria-label="Top 10 highest rated books bar chart" role="img"></canvas>
+        </div>
+      </div>
+
+      <!-- Histogram: rating distribution -->
+      <div class="chart-card" id="chart-rating-dist">
+        <div class="chart-card-title">📊 Rating Distribution</div>
+        <div class="chart-card-sub">How community ratings are spread across all books</div>
+        <div class="chart-wrap">
+          <canvas id="ratingDistChart" height="220" aria-label="Rating distribution histogram" role="img"></canvas>
+        </div>
+      </div>
+
+      <!-- Scatter: votes vs rating -->
+      <div class="chart-card" id="chart-scatter">
+        <div class="chart-card-title">🔬 Votes vs. Rating Scatter</div>
+        <div class="chart-card-sub">Does popularity correlate with quality?</div>
+        <div class="chart-wrap">
+          <canvas id="scatterChart" height="220" aria-label="Votes versus rating scatter plot" role="img"></canvas>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── Top Authors Table ───────────────────────────── -->
+    <div class="chart-card" id="chart-authors-table" style="margin-bottom:2rem">
+      <div class="chart-card-title">✍️ Top 10 Authors by Total Votes</div>
+      <div class="chart-card-sub">Authors whose books collectively received the most community ratings</div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:0.875rem;margin-top:1rem" id="authors-table" role="table" aria-label="Top authors table">
+          <thead>
+            <tr>
+              <th style="text-align:left;padding:0.6rem 1rem;color:var(--text-muted);font-weight:500;border-bottom:1px solid var(--border-glass)">#</th>
+              <th style="text-align:left;padding:0.6rem 1rem;color:var(--text-muted);font-weight:500;border-bottom:1px solid var(--border-glass)">Author</th>
+              <th style="text-align:right;padding:0.6rem 1rem;color:var(--text-muted);font-weight:500;border-bottom:1px solid var(--border-glass)">Total Votes</th>
+              <th style="text-align:right;padding:0.6rem 1rem;color:var(--text-muted);font-weight:500;border-bottom:1px solid var(--border-glass)">Avg Rating</th>
+            </tr>
+          </thead>
+          <tbody id="authors-tbody">
+            {% for author in top_authors %}
+            <tr style="transition:background 0.2s" 
+                onmouseover="this.style.background='rgba(255,255,255,0.03)'"
+                onmouseout="this.style.background=''"
+                id="author-row-{{ loop.index }}">
+              <td style="padding:0.7rem 1rem;color:var(--text-muted)">#{{ loop.index }}</td>
+              <td style="padding:0.7rem 1rem;color:var(--text-primary);font-weight:500">{{ author.name }}</td>
+              <td style="padding:0.7rem 1rem;text-align:right;color:var(--accent-cyan)">{{ "{:,}".format(author.votes) }}</td>
+              <td style="padding:0.7rem 1rem;text-align:right">
+                <span style="
+                  background:rgba(245,158,11,0.1);
+                  border:1px solid rgba(245,158,11,0.2);
+                  border-radius:100px;
+                  padding:0.15rem 0.5rem;
+                  color:var(--accent-amber);
+                  font-size:0.8rem;
+                ">{{ "%.1f" | format(author.avg_rating) }} ★</span>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ── Footer ───────────────────────────────────────── -->
+  <footer class="footer" role="contentinfo">
+    <p>ReadWise Analytics · Built with Python, Flask & Chart.js &nbsp;|&nbsp;
+       <a href="/api/recommend?title=Harry+Potter&n=4">Try the JSON API →</a>
+    </p>
+  </footer>
+
+  <script>
+    // ── Chart.js global defaults ──────────────────────
+    Chart.defaults.color = '#94a3b8';
+    Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
+    Chart.defaults.font.family = 'Inter, sans-serif';
+
+    const VIOLET = 'rgba(124,58,237,0.8)';
+    const INDIGO = 'rgba(79,70,229,0.8)';
+    const CYAN   = 'rgba(6,182,212,0.8)';
+    const AMBER  = 'rgba(245,158,11,0.8)';
+    const EMERALD= 'rgba(16,185,129,0.8)';
+
+    const chartData = {{ chart_data | tojson }};
+
+    // ── Top Votes Bar Chart ───────────────────────────
+    new Chart(document.getElementById('topVotesChart'), {
+      type: 'bar',
+      data: {
+        labels: chartData.top_votes.labels,
+        datasets: [{
+          label: 'Total Votes',
+          data: chartData.top_votes.values,
+          backgroundColor: chartData.top_votes.values.map((_, i) =>
+            `hsla(${260 + i * 8}, 70%, 65%, 0.75)`
+          ),
+          borderRadius: 6,
+          borderSkipped: false,
+        }]
+      },
+      options: {
+        responsive: true,
+        indexAxis: 'y',
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { color: 'rgba(255,255,255,0.04)' } },
+          y: { grid: { display: false }, ticks: { font: { size: 11 } } }
+        }
+      }
+    });
+
+    // ── Top Rated Bar Chart ───────────────────────────
+    new Chart(document.getElementById('topRatedChart'), {
+      type: 'bar',
+      data: {
+        labels: chartData.top_rated.labels,
+        datasets: [{
+          label: 'Avg Rating',
+          data: chartData.top_rated.values,
+          backgroundColor: chartData.top_rated.values.map((_, i) =>
+            `hsla(${170 + i * 6}, 70%, 55%, 0.75)`
+          ),
+          borderRadius: 6,
+          borderSkipped: false,
+        }]
+      },
+      options: {
+        responsive: true,
+        indexAxis: 'y',
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { min: 0, max: 10, grid: { color: 'rgba(255,255,255,0.04)' } },
+          y: { grid: { display: false }, ticks: { font: { size: 11 } } }
+        }
+      }
+    });
+
+    // ── Rating Distribution Histogram ─────────────────
+    new Chart(document.getElementById('ratingDistChart'), {
+      type: 'bar',
+      data: {
+        labels: chartData.rating_dist.labels,
+        datasets: [{
+          label: 'Number of Books',
+          data: chartData.rating_dist.values,
+          backgroundColor: VIOLET,
+          borderColor: 'rgba(124,58,237,1)',
+          borderWidth: 1,
+          borderRadius: 4,
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { title: { display: true, text: 'Average Rating', color: '#64748b' }, grid: { display: false } },
+          y: { title: { display: true, text: 'Count', color: '#64748b' }, grid: { color: 'rgba(255,255,255,0.04)' } }
+        }
+      }
+    });
+
+    // ── Votes vs Rating Scatter ───────────────────────
+    new Chart(document.getElementById('scatterChart'), {
+      type: 'scatter',
+      data: {
+        datasets: [{
+          label: 'Books',
+          data: chartData.scatter,
+          backgroundColor: CYAN,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => `Votes: ${ctx.parsed.x} | Rating: ${ctx.parsed.y.toFixed(1)}`
+            }
+          }
+        },
+        scales: {
+          x: { title: { display: true, text: 'Number of Votes', color: '#64748b' }, grid: { color: 'rgba(255,255,255,0.04)' } },
+          y: { title: { display: true, text: 'Average Rating', color: '#64748b' }, grid: { color: 'rgba(255,255,255,0.04)' } }
+        }
+      }
+    });
+
+    // ── Animate KPI counters ──────────────────────────
+    document.querySelectorAll('[data-count]').forEach(el => {
+      const target = parseFloat(el.dataset.count.replace(/,/g, ''));
+      const isFloat = !Number.isInteger(target);
+      let start = null;
+      const duration = 1400;
+      const animate = (ts) => {
+        if (!start) start = ts;
+        const progress = Math.min((ts - start) / duration, 1);
+        const ease = 1 - Math.pow(1 - progress, 3);
+        const val = ease * target;
+        el.textContent = isFloat ? val.toFixed(1) : Math.floor(val).toLocaleString();
+        if (progress < 1) requestAnimationFrame(animate);
+      };
+      requestAnimationFrame(animate);
+    });
+  </script>
+</body>
+</html>

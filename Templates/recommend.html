@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Get intelligent book recommendations powered by collaborative filtering. Enter any book title and discover similar reads.">
+  <title>Recommend — ReadWise</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+  <!-- ── Navbar ──────────────────────────────────────── -->
+  <nav class="navbar" role="navigation" aria-label="Main navigation">
+    <a class="navbar-brand" href="/" id="nav-brand">Book<span>Lens</span></a>
+    <ul class="nav-links">
+      <li><a href="/" id="nav-home">🏠 Home</a></li>
+      <li><a href="/recommend" class="active" id="nav-recommend">🔍 Recommend</a></li>
+      <li><a href="/dashboard" id="nav-dashboard">📊 Dashboard</a></li>
+    </ul>
+  </nav>
+
+  <!-- ── Hero ────────────────────────────────────────── -->
+  <section class="hero" style="padding-bottom:2rem" aria-labelledby="rec-heading">
+    <div class="hero-badge">🧠 Collaborative Filtering Engine</div>
+    <h1 id="rec-heading">
+      Find Books <span class="gradient-text">Similar To</span> Yours
+    </h1>
+    <p>Enter a book you've loved and our ML model will find readers with similar taste and surface what they read next.</p>
+
+    <div class="search-container" id="rec-search">
+      <form action="/recommend_books" method="post" id="rec-form" autocomplete="off">
+        <div class="search-wrapper">
+          <span class="search-icon">📖</span>
+          <input
+            type="text"
+            name="user_input"
+            id="rec-input"
+            class="search-input"
+            placeholder="e.g. Harry Potter, The Alchemist…"
+            aria-label="Enter a book title"
+            value="{{ query if query else '' }}"
+          >
+          <button type="submit" class="search-btn" id="rec-submit-btn">Recommend →</button>
+        </div>
+        <div class="autocomplete-dropdown" id="rec-autocomplete" role="listbox" aria-label="Autocomplete suggestions"></div>
+      </form>
+    </div>
+
+    <!-- How it works tag -->
+    <p style="font-size:0.8rem;color:var(--text-muted);margin-top:0.75rem">
+      💡 Uses cosine similarity on a user-book pivot matrix trained on 270,000+ ratings
+    </p>
+  </section>
+
+  <main class="section" id="results-section">
+
+    <!-- ── Error state ─── -->
+    {% if error %}
+    <div class="alert-error" id="rec-error-alert" role="alert">
+      ⚠️ {{ error }} — Try another book title or check the spelling.
+    </div>
+    {% endif %}
+
+    <!-- ── Results ──────── -->
+    {% if data %}
+    <div class="section-header">
+      <h2 class="section-title">
+        Recommendations
+        <span>based on "{{ query }}"</span>
+      </h2>
+      <span class="section-badge">{{ data | length }} matches found</span>
+    </div>
+
+    <!-- How the model works — explainability panel -->
+    <div style="
+      background: rgba(124,58,237,0.07);
+      border: 1px solid rgba(124,58,237,0.2);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.5rem;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+    " id="model-explainability-panel">
+      <span style="font-size:1.2rem">🔬</span>
+      <div>
+        <strong style="color:var(--text-primary)">How this works:</strong>
+        We build a User × Book pivot table from 270K+ ratings, then compute cosine similarity between book vectors. 
+        Books are ranked by how many shared readers rated them similarly. The similarity score shows how close each match is.
+      </div>
+    </div>
+
+    <div class="rec-grid" id="rec-results-grid" role="list">
+      {% for i in data %}
+      <article class="rec-card" role="listitem" id="rec-result-{{ loop.index }}" aria-label="{{ i[0] }}">
+        <div class="rec-cover-wrap">
+          <img
+            class="rec-cover"
+            src="{{ i[2] }}"
+            alt="Cover of {{ i[0] }}"
+            loading="lazy"
+            onerror="this.src='https://via.placeholder.com/180x270/1e1b4b/a78bfa?text=📖'"
+          >
+        </div>
+        <div class="rec-body">
+          <div class="rec-title">{{ i[0] }}</div>
+          <div class="rec-author">{{ i[1] }}</div>
+          <div class="similarity-bar-wrap">
+            <span class="similarity-label">Match</span>
+            <div class="similarity-bar">
+              <div class="similarity-fill" style="width: {{ (i[3] * 100) | int }}%" id="sim-bar-{{ loop.index }}"></div>
+            </div>
+            <span class="similarity-label">{{ "%.0f" | format(i[3] * 100) }}%</span>
+          </div>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+
+    <!-- Try another -->
+    <div style="text-align:center; margin-top:3rem;">
+      <a href="/recommend" style="
+        display:inline-flex; align-items:center; gap:0.5rem;
+        padding: 0.75rem 2rem;
+        background: var(--bg-glass);
+        border: 1px solid var(--border-glass);
+        border-radius: 100px;
+        color: var(--text-secondary);
+        text-decoration: none;
+        font-size:0.9rem;
+        transition: var(--transition);
+      " id="try-again-btn" onmouseover="this.style.color='white'" onmouseout="this.style.color=''">
+        ↩ Try a different book
+      </a>
+    </div>
+
+    {% elif not error %}
+    <!-- ── Empty / initial state ── -->
+    <div class="empty-state" id="rec-empty-state">
+      <div class="empty-icon">🔎</div>
+      <h3>Enter a book title above</h3>
+      <p>We'll find readers who loved it and show you what they read next.</p>
+      <br>
+      <p style="font-size:0.8rem">Try: <em>The Da Vinci Code</em> · <em>Harry Potter</em> · <em>To Kill a Mockingbird</em></p>
+    </div>
+    {% endif %}
+
+  </main>
+
+  <!-- ── Footer ───────────────────────────────────────── -->
+  <footer class="footer" role="contentinfo">
+    <p>ReadWise · Collaborative Filtering · Built with Python & Flask &nbsp;|&nbsp;
+       <a href="/dashboard">View Analytics →</a>
+    </p>
+  </footer>
+
+  <!-- ── Loading Overlay ──────────────────────────────── -->
+  <div class="loading-overlay" id="loading-overlay" role="status" aria-live="polite">
+    <div class="spinner"></div>
+    <span class="loading-text">Calculating similarity scores…</span>
+  </div>
+
+  <script>
+    // ── Autocomplete ──────────────────────────────────
+    const recInput = document.getElementById('rec-input');
+    const recDropdown = document.getElementById('rec-autocomplete');
+    const recForm = document.getElementById('rec-form');
+    const loadingOverlay = document.getElementById('loading-overlay');
+    let acIndex = -1;
+    let acItems = [];
+
+    recInput.addEventListener('input', async () => {
+      const q = recInput.value.trim();
+      recDropdown.innerHTML = '';
+      acIndex = -1;
+
+      if (q.length < 2) { recDropdown.classList.remove('visible'); return; }
+
+      try {
+        const res = await fetch(`/autocomplete?q=${encodeURIComponent(q)}`);
+        const suggestions = await res.json();
+        acItems = suggestions;
+
+        if (!suggestions.length) { recDropdown.classList.remove('visible'); return; }
+
+        suggestions.forEach((title, idx) => {
+          const item = document.createElement('div');
+          item.className = 'autocomplete-item';
+          item.setAttribute('role', 'option');
+          const highlighted = title.replace(
+            new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi'),
+            '<strong>$1</strong>'
+          );
+          item.innerHTML = `📖 ${highlighted}`;
+          item.addEventListener('click', () => {
+            recInput.value = title;
+            recDropdown.classList.remove('visible');
+          });
+          recDropdown.appendChild(item);
+        });
+
+        recDropdown.classList.add('visible');
+      } catch(e) { recDropdown.classList.remove('visible'); }
+    });
+
+    recInput.addEventListener('keydown', (e) => {
+      const items = recDropdown.querySelectorAll('.autocomplete-item');
+      if (!items.length) return;
+      if (e.key === 'ArrowDown') acIndex = Math.min(acIndex + 1, items.length - 1);
+      else if (e.key === 'ArrowUp') acIndex = Math.max(acIndex - 1, -1);
+      else if (e.key === 'Escape') { recDropdown.classList.remove('visible'); return; }
+      else if (e.key === 'Enter' && acIndex >= 0) {
+        e.preventDefault();
+        recInput.value = acItems[acIndex];
+        recDropdown.classList.remove('visible');
+        return;
+      }
+      items.forEach((el, i) => el.classList.toggle('selected', i === acIndex));
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('#rec-search')) recDropdown.classList.remove('visible');
+    });
+
+    recForm.addEventListener('submit', () => {
+      loadingOverlay.classList.add('show');
+    });
+
+    // ── Animate similarity bars on load ───────────────
+    document.querySelectorAll('.similarity-fill').forEach(el => {
+      const targetWidth = el.style.width;
+      el.style.width = '0%';
+      setTimeout(() => { el.style.width = targetWidth; }, 300);
+    });
+  </script>
+</body>
+</html>
