@@ -320,12 +320,6 @@ This project is open source and available under the [MIT License](LICENSE).
 
 ---
 
-## 🙏 Acknowledgements
 
-- **Book-Crossing Dataset** — Cai-Nicolas Ziegler et al. (2005) — *Improving Recommendation Lists Through Topic Diversification*, WWW '05
-- **scikit-learn** — Machine learning library for Python
-- **Chart.js** — Simple yet flexible JavaScript charting library
-
----
 
 *Built as a portfolio project demonstrating end-to-end ML system design: data pipeline → model training → REST API → interactive web UI.*
